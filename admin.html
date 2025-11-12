@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin - Bus Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/qrcode/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <div class="max-w-4xl mx-auto p-6">
+    <h1 class="text-xl font-semibold mb-4">Admin Dashboard</h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="font-medium">Add / Edit Bus</h2>
+        <label class="block mt-2">Bus name</label>
+        <input id="busName" class="w-full border rounded p-2 mt-1" placeholder="Bus 1" />
+        <label class="block mt-2">Capacity</label>
+        <input id="busCap" type="number" class="w-full border rounded p-2 mt-1" value="10" />
+        <label class="block mt-2">Zones (comma separated)</label>
+        <input id="busZones" class="w-full border rounded p-2 mt-1" placeholder="Dbayeh, Zalka" />
+        <div class="mt-3"><button id="addBus" class="bg-green-600 text-white px-4 py-2 rounded">Add / Save</button></div>
+      </div>
+
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="font-medium">Scanner (Admin only)</h2>
+        <div id="scanner" class="w-full h-56 bg-gray-900 text-white rounded flex items-center justify-center">Scanner not started</div>
+        <div class="mt-3 flex gap-2">
+          <button id="startScan" class="bg-blue-600 text-white px-3 py-2 rounded">Start Scan</button>
+          <button id="stopScan" class="bg-gray-200 px-3 py-2 rounded">Stop</button>
+        </div>
+        <div id="scanLog" class="mt-2 text-sm text-gray-600"></div>
+      </div>
+    </div>
+
+    <div class="mt-6 bg-white p-4 rounded shadow">
+      <h2 class="font-medium">Buses & Assigned Students</h2>
+      <div id="busesList" class="mt-3 grid gap-3"></div>
+      <!-- Clear Students Button -->
+      <button id="clearStudents" class="bg-red-600 text-white px-3 py-2 rounded mt-4">Clear All Students</button>
+    </div>
+
+    <div class="mt-6"><a href="index.html" class="text-blue-600">← Back</a></div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script>
+    function renderAdmin(){
+      const list = document.getElementById('busesList'); list.innerHTML = '';
+      const data = loadData();
+      data.buses.forEach(b=>{
+        const card = document.createElement('div'); card.className='p-3 border rounded';
+        const studentsHtml = b.students.map(id=>{ const s = data.students[id]; return `${s.name} (${s.zone}) - ${s.done? 'Dropped':'On board'}`; }).join('<br>');
+        card.innerHTML = `<strong>${b.name}</strong> — ${b.students.length}/${b.capacity}<div class='mt-2 text-sm'>Zones: ${b.zones.join(', ')}</div><div class='mt-2 text-sm'>${studentsHtml || '<em>No students</em>'}</div><div class='mt-2'><a class='text-sm text-blue-600' href='bus.html?id=${b.id}'>Open bus view</a></div>`;
+        list.appendChild(card);
+      });
+    }
+
+    document.getElementById('addBus').addEventListener('click', ()=>{
+      const name = document.getElementById('busName').value.trim();
+      const cap = parseInt(document.getElementById('busCap').value,10) || 10;
+      const zones = document.getElementById('busZones').value.split(',').map(s=>s.trim()).filter(Boolean);
+      if(!name || zones.length===0){ alert('Provide name and at least one zone'); return }
+      addOrUpdateBus({name,capacity:cap,zones});
+      document.getElementById('busName').value=''; document.getElementById('busCap').value='10'; document.getElementById('busZones').value='';
+      renderAdmin();
+    });
+
+    // Scanner setup
+    let html5QrScanner = null;
+    document.getElementById('startScan').addEventListener('click', ()=>{
+      const scannerDiv = document.getElementById('scanner'); scannerDiv.innerHTML='';
+      html5QrScanner = new Html5Qrcode("scanner");
+      Html5Qrcode.getCameras().then(cameras=>{
+        if(cameras && cameras.length){
+          const camId = cameras[0].id;
+          html5QrScanner.start(camId, {fps:10, qrbox:250}, qrCodeMessage => { handleScannedAdmin(qrCodeMessage); }, err=>{}).catch(e=>{ document.getElementById('scanLog').innerText='Camera failed: '+e; });
+        } else { document.getElementById('scanLog').innerText='No camera found'; }
+      }).catch(e=>{ document.getElementById('scanLog').innerText='Camera error: '+e; });
+    });
+    document.getElementById('stopScan').addEventListener('click', ()=>{ if(html5QrScanner) html5QrScanner.stop().then(()=>{ document.getElementById('scanner').innerText='Scanner stopped'; }).catch(()=>{}); });
+
+    function handleScannedAdmin(message){
+      try{ const data = JSON.parse(message); const id = data.studentId; markStudentDone(id); renderAdmin(); document.getElementById('scanLog').innerText = 'Checked out: '+id; } catch(e){ document.getElementById('scanLog').innerText='Invalid QR'; }
+    }
+
+    // Clear all students button
+    document.getElementById('clearStudents').addEventListener('click', ()=>{
+      if(confirm('Are you sure you want to clear all students?')){
+        const data = loadData();
+        data.students = {};
+        data.buses.forEach(b => b.students = []);
+        saveData(data);
+        renderAdmin();
+        alert('All students cleared!');
+      }
+    });
+
+    renderAdmin();
+  </script>
+</body>
+</html>

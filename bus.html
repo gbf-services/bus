@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bus View</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <div class="max-w-3xl mx-auto p-6">
+    <h1 class="text-xl font-semibold mb-4">Bus View</h1>
+    <div class="bg-white p-4 rounded shadow">
+      <label>Enter bus id (e.g. 1)</label>
+      <input id="busIdInput" class="w-full border rounded p-2 mt-1" placeholder="Bus id" />
+      <div class="mt-3"><button id="openBus" class="bg-blue-600 text-white px-4 py-2 rounded">Open Bus</button></div>
+    </div>
+
+    <div id="busArea" class="mt-6"></div>
+    <div class="mt-6"><a href="index.html" class="text-blue-600">← Back</a></div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script>
+    function renderBusPage(busId){
+      const data = loadData();
+      const bus = data.buses.find(b=>String(b.id) === String(busId));
+      const area = document.getElementById('busArea');
+      if(!bus){ area.innerHTML = '<div class="p-4 bg-yellow-50 border rounded">Bus not found</div>'; return }
+      const studentsHtml = bus.students.map(id=>{ const s = data.students[id]; return `<div class="p-2 border-b">${s.name} — ${s.zone} — ${s.done? '<span class="text-green-600">Dropped</span>' : '<button data-id="'+id+'" class="markBtn bg-green-500 text-white px-2 py-1 rounded">Mark Dropped</button>'}</div>`; }).join('');
+      area.innerHTML = `<div class="bg-white p-4 rounded shadow"><h2 class="font-medium">${bus.name} — ${bus.students.length}/${bus.capacity}</h2><div class="mt-3">${studentsHtml || '<em>No students</em>'}</div></div>`;
+      area.querySelectorAll('.markBtn').forEach(btn=>{ btn.addEventListener('click', ()=>{ markStudentDone(btn.getAttribute('data-id')); renderBusPage(busId); }); });
+    }
+
+    document.getElementById('openBus').addEventListener('click', ()=>{ const id = document.getElementById('busIdInput').value.trim(); if(!id) return; renderBusPage(id); });
+
+    // If page opened as bus.html?id=1 auto open
+    const params = new URLSearchParams(location.search); if(params.get('id')){ document.getElementById('busIdInput').value = params.get('id'); renderBusPage(params.get('id')); }
+  </script>
+</body>
+</html>

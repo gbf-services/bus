@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Student - Register</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/qrcode/build/qrcode.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <div class="max-w-2xl mx-auto p-6">
+    <h1 class="text-xl font-semibold mb-4">Student Registration</h1>
+    <div class="bg-white p-4 rounded shadow">
+      <label class="block">Full name</label>
+      <input id="name" class="w-full border rounded p-2 mt-1" placeholder="John Doe" />
+      <label class="block mt-3">Area / Zone</label>
+      <input id="zone" class="w-full border rounded p-2 mt-1" placeholder="e.g. Dbayeh" />
+      <div class="mt-4 flex gap-2">
+        <button id="register" class="bg-blue-600 text-white px-4 py-2 rounded">Register</button>
+        <button id="clear" class="bg-gray-200 px-4 py-2 rounded">Clear</button>
+      </div>
+      <div id="result" class="mt-4 text-sm"></div>
+      <div id="qrArea" class="mt-4"></div>
+    </div>
+    <div class="mt-6 text-sm text-gray-600">Note: The system will assign you automatically to the bus responsible for the zone.</div>
+    <div class="mt-6"><a href="index.html" class="text-blue-600">← Back</a></div>
+  </div>
+  <script src="js/main.js"></script>
+  <script>
+    // Student page logic
+    document.getElementById('register').addEventListener('click', async ()=>{
+      const name = document.getElementById('name').value.trim();
+      const zone = document.getElementById('zone').value.trim();
+      const result = document.getElementById('result');
+      const qrArea = document.getElementById('qrArea');
+      qrArea.innerHTML = '';
+      if(!name || !zone){ result.innerText = 'Please fill name and zone.'; return }
+      const student = registerStudent({name, zone});
+      if(!student){ result.innerText = 'No bus covers this zone. Contact admin.'; return }
+      result.innerHTML = `<strong>Assigned to:</strong> ${student.busName} — Code: ${student.id}`;
+      // generate QR payload
+      const payload = JSON.stringify({studentId: student.id});
+      const canvas = document.createElement('canvas');
+      qrArea.appendChild(canvas);
+      await QRCode.toCanvas(canvas, payload, {width:200});
+    });
+    document.getElementById('clear').addEventListener('click', ()=>{ document.getElementById('name').value=''; document.getElementById('zone').value=''; document.getElementById('result').innerText=''; document.getElementById('qrArea').innerHTML=''; });
+  </script>
+</body>
+</html>
